@@ -1344,7 +1344,7 @@ on conflict (name) do nothing;</pre>
           <p class="page-subtitle">Registrér bestillinger og varemodtag dem direkte ind på lageret.</p>
         </div>
         <div class="row-flex">
-          <button class="btn btn-primary" id="show-add-order">
+          <button class="btn btn-primary admin-only" id="show-add-order">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Ny bestilling
           </button>
@@ -1941,7 +1941,11 @@ async function dbAddOrder(o) {
     const row = { id: uid(), ...o, created_at: new Date().toISOString() };
     state.orders.unshift(row); persistDemo(); return row;
   }
-  const { data, error } = await supabase.from('orders').insert(o).select().single();
+  const { data, error } = await supabase.rpc('admin_add_order', {
+    p_admin: state.currentUser, p_pin: state.adminPin,
+    p_product_id: o.product_id, p_quantity: o.quantity,
+    p_supplier: o.supplier, p_note: o.note
+  });
   if (error) throw error;
   return data;
 }
@@ -3033,6 +3037,7 @@ function wireEvents() {
   });
   document.getElementById('add-order-form').addEventListener('submit', async (e) => {
     e.preventDefault();
+    if (!state.isAdmin) { toast('Kun admins kan oprette bestillinger', 'danger'); return; }
     if (!state.currentUser) { toast('Vælg en bruger først', 'danger'); return; }
     const productId = document.getElementById('no-product').value;
     const qty = parseInt(document.getElementById('no-qty').value, 10);
