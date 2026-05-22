@@ -198,6 +198,15 @@
 
   .btn-sm { padding: 6px 10px; font-size: 12px; }
 
+  body:not(.is-admin) .admin-only { display: none !important; }
+  .admin-badge {
+    display: inline-flex; align-items: center;
+    font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--accent); background: var(--accent-soft); border: 1px solid var(--accent-border);
+    padding: 2px 6px; border-radius: 999px; margin-left: 6px;
+  }
+
   /* ============ MAIN LAYOUT ============ */
   main {
     max-width: 1200px;
@@ -1237,6 +1246,14 @@ on conflict (name) do nothing;</pre>
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 14l2 2 4-4"/></svg>
         Statusoptælling
       </button>
+      <button class="tab" data-tab="orders" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
+        Bestillinger <span class="tab-badge" id="count-orders">0</span>
+      </button>
+      <button class="tab" data-tab="returns" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
+        Returlager <span class="tab-badge" id="count-returns">0</span>
+      </button>
       <button class="tab" data-tab="log" role="tab">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         Aktivitetslog <span class="tab-badge" id="count-activities">0</span>
@@ -1257,7 +1274,7 @@ on conflict (name) do nothing;</pre>
           <p class="page-subtitle">Hurtig oversigt og bevægelser. Tryk på <strong>+</strong> eller <strong>−</strong> for at justere.</p>
         </div>
         <div class="row-flex">
-          <button class="btn btn-primary" id="show-add-form">
+          <button class="btn btn-primary admin-only" id="show-add-form">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Tilføj produkt
           </button>
@@ -1313,10 +1330,102 @@ on conflict (name) do nothing;</pre>
           <p class="page-subtitle">Alle bevægelser — hvem, hvad, hvornår.</p>
         </div>
         <div class="row-flex">
-          <button class="btn btn-ghost btn-sm" id="clear-log-btn">Ryd log</button>
+          <button class="btn btn-ghost btn-sm admin-only" id="clear-log-btn">Ryd log</button>
         </div>
       </div>
       <div class="card" id="log-card"></div>
+    </section>
+
+    <!-- ============ BESTILLINGER ============ -->
+    <section id="view-orders" class="view hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Bestillinger</h1>
+          <p class="page-subtitle">Registrér bestillinger og varemodtag dem direkte ind på lageret.</p>
+        </div>
+        <div class="row-flex">
+          <button class="btn btn-primary" id="show-add-order">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ny bestilling
+          </button>
+        </div>
+      </div>
+
+      <div class="add-form-wrap" id="add-order-wrap">
+        <div class="add-form-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Ny bestilling
+        </div>
+        <form class="add-form" id="add-order-form">
+          <div class="form-field">
+            <label for="no-product">Produkt</label>
+            <select id="no-product" required></select>
+          </div>
+          <div class="form-field">
+            <label for="no-qty">Antal</label>
+            <input type="number" id="no-qty" class="mono" value="1" min="1" required />
+          </div>
+          <div class="form-field">
+            <label for="no-supplier">Leverandør (valgfri)</label>
+            <input type="text" id="no-supplier" placeholder="fx. Bauhaus" autocomplete="off" />
+          </div>
+          <div class="form-field">
+            <label for="no-note">Note (valgfri)</label>
+            <input type="text" id="no-note" placeholder="fx. ordre #1234" autocomplete="off" />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Tilføj bestilling</button>
+            <button type="button" class="btn btn-ghost" id="cancel-add-order">Annullér</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="orders-warning-banner"></div>
+      <div id="orders-content"></div>
+    </section>
+
+    <!-- ============ RETURLAGER ============ -->
+    <section id="view-returns" class="view hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Returlager</h1>
+          <p class="page-subtitle">Registrér varer modtaget retur. Tæller ikke med i hovedlager.</p>
+        </div>
+        <div class="row-flex">
+          <button class="btn btn-primary" id="show-add-return">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+            Ny retur
+          </button>
+        </div>
+      </div>
+
+      <div class="add-form-wrap" id="add-return-wrap">
+        <div class="add-form-title">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--accent);margin-right:6px"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+          Ny retur-registrering
+        </div>
+        <form class="add-form" id="add-return-form">
+          <div class="form-field">
+            <label for="nr-product">Produkt</label>
+            <select id="nr-product" required></select>
+          </div>
+          <div class="form-field">
+            <label for="nr-qty">Antal</label>
+            <input type="number" id="nr-qty" class="mono" value="1" min="1" required />
+          </div>
+          <div class="form-field">
+            <label for="nr-note">Note (valgfri)</label>
+            <input type="text" id="nr-note" placeholder="fx. defekt, kunde Jensen" autocomplete="off" />
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn-primary">Tilføj retur</button>
+            <button type="button" class="btn btn-ghost" id="cancel-add-return">Annullér</button>
+          </div>
+        </form>
+      </div>
+
+      <div id="returns-warning-banner"></div>
+      <div id="returns-content"></div>
     </section>
 
     <!-- ============ DASHBOARD ============ -->
@@ -1352,7 +1461,7 @@ on conflict (name) do nothing;</pre>
   <div class="modal modal-wide">
     <h3>Brugere</h3>
     <p>Tilføj eller fjern brugere fra teamet. Tidligere log-poster bevarer navnet selv hvis brugeren slettes.</p>
-    <form class="add-user-inline-form" id="add-user-form">
+    <form class="add-user-inline-form admin-only" id="add-user-form">
       <input type="text" id="new-user-name" placeholder="Nyt brugernavn..." autocomplete="off" />
       <button type="submit" class="btn btn-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1409,7 +1518,11 @@ const state = {
   products: [],
   activities: [],
   users: [],
+  orders: [],
+  returns: [],
   currentUser: localStorage.getItem(USER_KEY) || null,
+  isAdmin: false,
+  adminPin: null,
   connected: false
 };
 
@@ -1619,20 +1732,28 @@ async function loadAll() {
     state.products = data.products;
     state.activities = data.activities;
     state.users = data.users;
+    state.orders = data.orders || [];
+    state.returns = data.returns || [];
     state.connected = true;
     return;
   }
-  const [pRes, aRes, uRes] = await Promise.all([
+  const [pRes, aRes, uRes, oRes, rRes] = await Promise.all([
     supabase.from('products').select('*').order('name', { ascending: true }),
     supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(500),
-    supabase.from('app_users').select('*').order('name', { ascending: true })
+    supabase.from('app_users').select('*').order('name', { ascending: true }),
+    supabase.from('orders').select('*').order('created_at', { ascending: false }),
+    supabase.from('returns').select('*').order('created_at', { ascending: false })
   ]);
   if (pRes.error) throw new Error('Kan ikke hente produkter: ' + pRes.error.message);
   if (aRes.error) throw new Error('Kan ikke hente aktiviteter: ' + aRes.error.message);
   if (uRes.error) throw new Error('Kan ikke hente brugere: ' + uRes.error.message);
+  if (oRes.error) throw new Error('Kan ikke hente bestillinger: ' + oRes.error.message);
+  if (rRes.error) throw new Error('Kan ikke hente returer: ' + rRes.error.message);
   state.products = pRes.data;
   state.activities = aRes.data;
   state.users = uRes.data;
+  state.orders = oRes.data;
+  state.returns = rRes.data;
 }
 
 async function dbAddProduct(p) {
@@ -1713,6 +1834,165 @@ async function dbDeleteUser(id) {
   if (error) throw error;
 }
 
+async function dbUserHasPin(name) {
+  if (demoMode) return false;
+  const { data, error } = await supabase.rpc('user_has_pin', { p_name: name });
+  if (error) throw error;
+  return data === true;
+}
+
+async function dbUserIsAdmin(name) {
+  if (demoMode) return name === 'Medin';
+  const { data, error } = await supabase.rpc('get_user_role', { p_name: name });
+  if (error) throw error;
+  return data === true;
+}
+
+async function dbAdminAddProduct(p) {
+  if (demoMode) return dbAddProduct(p);
+  const { data, error } = await supabase.rpc('admin_add_product', {
+    p_admin: state.currentUser, p_pin: state.adminPin,
+    p_name: p.name, p_stock: p.stock, p_low: p.low_threshold
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function dbAdminDeleteProduct(id) {
+  if (demoMode) { state.products = state.products.filter(x => x.id !== id); persistDemo(); return; }
+  const { error } = await supabase.rpc('admin_delete_product', {
+    p_admin: state.currentUser, p_pin: state.adminPin, p_id: id
+  });
+  if (error) throw error;
+}
+
+async function dbAdminAddUser(name) {
+  if (demoMode) return dbAddUser(name);
+  const { data, error } = await supabase.rpc('admin_add_user', {
+    p_admin: state.currentUser, p_pin: state.adminPin, p_new_name: name
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function dbAdminDeleteUser(id) {
+  if (demoMode) { state.users = state.users.filter(u => u.id !== id); persistDemo(); return; }
+  const { error } = await supabase.rpc('admin_delete_user', {
+    p_admin: state.currentUser, p_pin: state.adminPin, p_target_id: id
+  });
+  if (error) throw error;
+}
+
+async function dbAdminSetAdmin(targetName, value) {
+  if (demoMode) return;
+  const { error } = await supabase.rpc('admin_set_admin', {
+    p_admin: state.currentUser, p_pin: state.adminPin,
+    p_target_name: targetName, p_value: value
+  });
+  if (error) throw error;
+}
+
+async function dbAdminClearActivities() {
+  if (demoMode) { state.activities = []; persistDemo(); return; }
+  const { error } = await supabase.rpc('admin_clear_activities', {
+    p_admin: state.currentUser, p_pin: state.adminPin
+  });
+  if (error) throw error;
+}
+
+async function dbAdminSetUserPin(target, newPin) {
+  if (demoMode) return;
+  const { error } = await supabase.rpc('admin_set_user_pin', {
+    p_admin: state.currentUser, p_pin: state.adminPin,
+    p_target: target, p_new_pin: newPin
+  });
+  if (error) throw error;
+}
+
+async function dbChangeUserPin(name, oldPin, newPin) {
+  if (demoMode) return;
+  const { error } = await supabase.rpc('change_user_pin', {
+    p_name: name, p_old_pin: oldPin, p_new_pin: newPin
+  });
+  if (error) throw error;
+}
+
+async function dbVerifyPin(name, pin) {
+  if (demoMode) return true;
+  const { data, error } = await supabase.rpc('verify_user_pin', { p_name: name, p_pin: pin });
+  if (error) throw error;
+  return data === true;
+}
+
+async function dbSetPin(name, pin) {
+  if (demoMode) { toast('PIN gemmes ikke i demo-tilstand'); return; }
+  const { error } = await supabase.rpc('set_user_pin', { p_name: name, p_pin: pin });
+  if (error) throw error;
+}
+
+async function dbClearPin(name) {
+  if (demoMode) return;
+  const { error } = await supabase.rpc('clear_user_pin', { p_name: name });
+  if (error) throw error;
+}
+
+async function dbAddOrder(o) {
+  if (demoMode) {
+    const row = { id: uid(), ...o, created_at: new Date().toISOString() };
+    state.orders.unshift(row); persistDemo(); return row;
+  }
+  const { data, error } = await supabase.from('orders').insert(o).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbReceiveOrder(orderId) {
+  if (demoMode) {
+    const o = state.orders.find(x => x.id === orderId);
+    if (!o) throw new Error('Bestilling findes ikke');
+    const p = state.products.find(x => x.id === o.product_id);
+    if (p) p.stock += o.quantity;
+    state.activities.unshift({
+      id: uid(), timestamp: new Date().toISOString(),
+      user_name: state.currentUser || '—', product_id: o.product_id,
+      product_name: o.product_name, delta: o.quantity, type: 'adjust',
+      note: 'Varemodtag fra bestilling'
+    });
+    state.orders = state.orders.filter(x => x.id !== orderId);
+    persistDemo(); return;
+  }
+  const { error } = await supabase.rpc('receive_order', {
+    p_order_id: orderId, p_user: state.currentUser || ''
+  });
+  if (error) throw error;
+}
+
+async function dbAdminDeleteOrder(id) {
+  if (demoMode) { state.orders = state.orders.filter(x => x.id !== id); persistDemo(); return; }
+  const { error } = await supabase.rpc('admin_delete_order', {
+    p_admin: state.currentUser, p_pin: state.adminPin, p_id: id
+  });
+  if (error) throw error;
+}
+
+async function dbAddReturn(r) {
+  if (demoMode) {
+    const row = { id: uid(), ...r, created_at: new Date().toISOString() };
+    state.returns.unshift(row); persistDemo(); return row;
+  }
+  const { data, error } = await supabase.from('returns').insert(r).select().single();
+  if (error) throw error;
+  return data;
+}
+
+async function dbAdminDeleteReturn(id) {
+  if (demoMode) { state.returns = state.returns.filter(x => x.id !== id); persistDemo(); return; }
+  const { error } = await supabase.rpc('admin_delete_return', {
+    p_admin: state.currentUser, p_pin: state.adminPin, p_id: id
+  });
+  if (error) throw error;
+}
+
 async function dbClearActivities() {
   if (demoMode) {
     state.activities = [];
@@ -1724,7 +2004,7 @@ async function dbClearActivities() {
 }
 
 function persistDemo() {
-  demoStore.save({ products: state.products, activities: state.activities, users: state.users });
+  demoStore.save({ products: state.products, activities: state.activities, users: state.users, orders: state.orders, returns: state.returns });
 }
 
 /* ===================================================================
@@ -1742,10 +2022,35 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'products' }, handleProductChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'activities' }, handleActivityChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, handleUserChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, handleOrderChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'returns' }, handleReturnChange)
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') setConnected(true);
       else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setConnected(false);
     });
+}
+
+function handleOrderChange(payload) {
+  const { eventType, new: row, old } = payload;
+  if (eventType === 'INSERT') {
+    if (!state.orders.find(x => x.id === row.id)) state.orders.unshift(row);
+  } else if (eventType === 'DELETE') {
+    state.orders = state.orders.filter(x => x.id !== old.id);
+  } else if (eventType === 'UPDATE') {
+    const i = state.orders.findIndex(x => x.id === row.id);
+    if (i >= 0) state.orders[i] = row;
+  }
+  renderAll();
+}
+
+function handleReturnChange(payload) {
+  const { eventType, new: row, old } = payload;
+  if (eventType === 'INSERT') {
+    if (!state.returns.find(x => x.id === row.id)) state.returns.unshift(row);
+  } else if (eventType === 'DELETE') {
+    state.returns = state.returns.filter(x => x.id !== old.id);
+  }
+  renderAll();
 }
 
 function handleProductChange(payload) {
@@ -1783,17 +2088,21 @@ function handleUserChange(payload) {
     if (!state.users.find(u => u.id === row.id)) state.users.push(row);
   } else if (eventType === 'DELETE') {
     state.users = state.users.filter(u => u.id !== old.id);
-    // If realtime told us the current user was deleted on another device, reset locally
     if (state.currentUser && !state.users.find(u => u.name === state.currentUser)) {
       state.currentUser = null;
       localStorage.removeItem(USER_KEY);
+      clearAdminSession();
     }
   } else if (eventType === 'UPDATE') {
     const i = state.users.findIndex(u => u.id === row.id);
     if (i >= 0) state.users[i] = row;
+    if (row.name === state.currentUser && state.isAdmin && row.is_admin === false) {
+      clearAdminSession();
+      toast('Din admin-rolle er fjernet', 'danger');
+      renderAll();
+    }
   }
   renderUserPicker();
-  // Re-render users modal list if open
   if (document.getElementById('users-modal-backdrop').classList.contains('open')) {
     renderUsersList();
   }
@@ -1817,12 +2126,16 @@ function renderAll() {
   if (currentTab === 'lager') renderLager();
   if (currentTab === 'count') renderCount();
   if (currentTab === 'log') renderLog();
+  if (currentTab === 'orders') renderOrders();
+  if (currentTab === 'returns') renderReturns();
   if (currentTab === 'dashboard') renderDashboard();
 }
 
 function renderTabBadges() {
   document.getElementById('count-products').textContent = state.products.length;
   document.getElementById('count-activities').textContent = state.activities.length;
+  document.getElementById('count-orders').textContent = state.orders.length;
+  document.getElementById('count-returns').textContent = state.returns.length;
 }
 
 function renderUserPicker() {
@@ -1839,10 +2152,20 @@ function renderUserPicker() {
     sel.appendChild(opt);
   });
   if (state.currentUser && !state.users.find(u => u.name === state.currentUser)) {
-    // current user no longer in list; clear
     state.currentUser = null;
     localStorage.removeItem(USER_KEY);
+    clearAdminSession();
   }
+}
+
+function applyAdminUI() {
+  document.body.classList.toggle('is-admin', !!state.isAdmin);
+}
+
+function clearAdminSession() {
+  state.isAdmin = false;
+  state.adminPin = null;
+  applyAdminUI();
 }
 
 function renderUserWarning(containerId) {
@@ -1917,7 +2240,7 @@ function renderLager() {
             <button class="icon-btn" data-act="adjust" data-id="${p.id}" ${!userActive ? 'disabled' : ''} title="Tilpas frit antal" aria-label="Tilpas frit antal">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
             </button>
-            <button class="icon-btn delete" data-act="delete" data-id="${p.id}" title="Slet produkt" aria-label="Slet produkt">
+            <button class="icon-btn delete admin-only" data-act="delete" data-id="${p.id}" title="Slet produkt" aria-label="Slet produkt">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
             </button>
           </div>
@@ -1988,8 +2311,7 @@ async function onProductAction(act, id) {
     });
     if (!ok) return;
     try {
-      await dbLogActivity({ type: 'delete', product_id: id, product_name: p.name, delta: -p.stock, note: 'Slettet' });
-      await dbDeleteProduct(id);
+      await dbAdminDeleteProduct(id);
       state.products = state.products.filter(x => x.id !== id);
       renderAll();
       toast(`«${p.name}» slettet`);
@@ -2104,6 +2426,176 @@ function renderLog() {
 }
 
 /* ----- DASHBOARD ----- */
+/* ----- ORDERS ----- */
+function renderOrders() {
+  renderUserWarning('orders-warning-banner');
+  populateProductSelect('no-product');
+  const container = document.getElementById('orders-content');
+  const userActive = !!state.currentUser;
+
+  if (state.orders.length === 0) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="empty">
+          <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg></div>
+          <div class="empty-title">Ingen bestillinger</div>
+          <p class="empty-text">Tryk "Ny bestilling" for at registrere noget bestilt.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '<div class="product-list">' + state.orders.map(o => `
+    <div class="product-card">
+      <div class="product-info">
+        <div class="product-name">${escapeHtml(o.product_name)} <span class="muted" style="font-weight:500">× ${o.quantity}</span></div>
+        <div class="product-meta">
+          ${o.supplier ? `<span>Leverandør: <strong>${escapeHtml(o.supplier)}</strong></span><span>·</span>` : ''}
+          <span>Bestilt af <strong>${escapeHtml(o.ordered_by || '—')}</strong></span>
+          <span>·</span>
+          <span>${formatTime(o.created_at)}</span>
+          ${o.note ? `<span>·</span><span>${escapeHtml(o.note)}</span>` : ''}
+        </div>
+      </div>
+      <div class="product-actions">
+        <button class="btn btn-primary btn-sm" data-receive-order="${o.id}" ${!userActive ? 'disabled' : ''}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></svg>
+          Varemodtag
+        </button>
+        <button class="icon-btn delete admin-only" data-delete-order="${o.id}" data-name="${escapeHtml(o.product_name)}" title="Slet bestilling" aria-label="Slet bestilling">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>`).join('') + '</div>';
+
+  container.querySelectorAll('button[data-receive-order]').forEach(btn => {
+    btn.addEventListener('click', () => onReceiveOrder(btn.dataset.receiveOrder));
+  });
+  container.querySelectorAll('button[data-delete-order]').forEach(btn => {
+    btn.addEventListener('click', () => onDeleteOrder(btn.dataset.deleteOrder, btn.dataset.name));
+  });
+}
+
+async function onReceiveOrder(id) {
+  const o = state.orders.find(x => x.id === id);
+  if (!o) return;
+  if (!state.currentUser) { toast('Vælg en bruger først', 'danger'); return; }
+  const ok = await confirmModal({
+    title: `Varemodtag «${o.product_name}»?`,
+    text: `${o.quantity} stk. lægges på lageret og bestillingen fjernes fra listen.`,
+    confirmLabel: 'Varemodtag', danger: false
+  });
+  if (!ok) return;
+  try {
+    await dbReceiveOrder(id);
+    state.orders = state.orders.filter(x => x.id !== id);
+    const p = state.products.find(x => x.id === o.product_id);
+    if (p) p.stock += o.quantity;
+    renderAll();
+    toast(`${o.quantity} stk. «${o.product_name}» varemodtaget`, 'success');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
+}
+
+async function onDeleteOrder(id, name) {
+  const ok = await confirmModal({
+    title: `Slet bestilling af «${name}»?`,
+    text: 'Bestillingen fjernes uden at varemodtage. Lageret påvirkes ikke.',
+    confirmLabel: 'Slet bestilling'
+  });
+  if (!ok) return;
+  try {
+    await dbAdminDeleteOrder(id);
+    state.orders = state.orders.filter(x => x.id !== id);
+    renderAll();
+    toast('Bestilling slettet');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
+}
+
+/* ----- RETURNS ----- */
+function renderReturns() {
+  renderUserWarning('returns-warning-banner');
+  populateProductSelect('nr-product');
+  const container = document.getElementById('returns-content');
+
+  if (state.returns.length === 0) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="empty">
+          <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg></div>
+          <div class="empty-title">Ingen returer registreret</div>
+          <p class="empty-text">Tryk "Ny retur" for at registrere en returneret vare.</p>
+        </div>
+      </div>`;
+    return;
+  }
+
+  container.innerHTML = '<div class="product-list">' + state.returns.map(r => `
+    <div class="product-card">
+      <div class="product-info">
+        <div class="product-name">${escapeHtml(r.product_name)} <span class="muted" style="font-weight:500">× ${r.quantity}</span></div>
+        <div class="product-meta">
+          <span>Registreret af <strong>${escapeHtml(r.registered_by || '—')}</strong></span>
+          <span>·</span>
+          <span>${formatTime(r.created_at)}</span>
+          ${r.note ? `<span>·</span><span>${escapeHtml(r.note)}</span>` : ''}
+        </div>
+      </div>
+      <div class="product-actions">
+        <button class="icon-btn delete admin-only" data-delete-return="${r.id}" data-name="${escapeHtml(r.product_name)}" title="Slet retur" aria-label="Slet retur">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>`).join('') + '</div>';
+
+  container.querySelectorAll('button[data-delete-return]').forEach(btn => {
+    btn.addEventListener('click', () => onDeleteReturn(btn.dataset.deleteReturn, btn.dataset.name));
+  });
+}
+
+async function onDeleteReturn(id, name) {
+  const ok = await confirmModal({
+    title: `Slet retur for «${name}»?`,
+    text: 'Returregistreringen fjernes.',
+    confirmLabel: 'Slet retur'
+  });
+  if (!ok) return;
+  try {
+    await dbAdminDeleteReturn(id);
+    state.returns = state.returns.filter(x => x.id !== id);
+    renderAll();
+    toast('Retur slettet');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
+}
+
+function populateProductSelect(selectId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const prev = sel.value;
+  sel.innerHTML = '';
+  if (state.products.length === 0) {
+    const opt = document.createElement('option');
+    opt.value = ''; opt.textContent = 'Ingen produkter — opret først';
+    opt.disabled = true; opt.selected = true;
+    sel.appendChild(opt);
+    return;
+  }
+  const ph = document.createElement('option');
+  ph.value = ''; ph.textContent = '— Vælg produkt —';
+  sel.appendChild(ph);
+  state.products.forEach(p => {
+    const opt = document.createElement('option');
+    opt.value = p.id; opt.textContent = p.name;
+    sel.appendChild(opt);
+  });
+  if (prev) sel.value = prev;
+}
+
 function renderDashboard() {
   const totalStock = state.products.reduce((s, p) => s + p.stock, 0);
   const lowStock = state.products.filter(p => p.stock <= p.low_threshold);
@@ -2204,22 +2696,130 @@ function renderUsersList() {
   }
   container.innerHTML = state.users.map(u => {
     const isActive = state.currentUser === u.name;
+    const adminBadge = u.is_admin ? '<span class="admin-badge">Admin</span>' : '';
+    const toggleLabel = u.is_admin ? 'Fjern admin' : 'Gør til admin';
+    const toggleClass = u.is_admin ? 'btn-danger' : 'btn';
     return `
       <div class="user-list-row">
         <div class="user-name-cell">
           <span class="avatar">${initials(u.name)}</span>
           <span class="name-text">${escapeHtml(u.name)}</span>
+          ${adminBadge}
           ${isActive ? '<span class="active-pill">Valgt</span>' : ''}
         </div>
-        <button class="icon-btn delete" data-delete-user="${u.id}" data-name="${escapeHtml(u.name)}" title="Slet ${escapeHtml(u.name)}" aria-label="Slet bruger">
+        <div style="display:flex;gap:6px;align-items:center;">
+        <button class="btn btn-sm ${toggleClass} admin-only" data-toggle-admin="${escapeHtml(u.name)}" data-current="${u.is_admin ? '1' : '0'}">${toggleLabel}</button>
+        <button class="icon-btn" data-pin-user="${escapeHtml(u.name)}" title="PIN for ${escapeHtml(u.name)}" aria-label="PIN">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </button>
+        <button class="icon-btn delete admin-only" data-delete-user="${u.id}" data-name="${escapeHtml(u.name)}" title="Slet ${escapeHtml(u.name)}" aria-label="Slet bruger">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a2 2 0 0 1 2-2h2a2 2 0 0 1 2 2v2"/></svg>
         </button>
+        </div>
       </div>`;
   }).join('');
 
   container.querySelectorAll('button[data-delete-user]').forEach(btn => {
     btn.addEventListener('click', () => onDeleteUser(btn.dataset.deleteUser, btn.dataset.name));
   });
+
+  container.querySelectorAll('button[data-pin-user]').forEach(btn => {
+    btn.addEventListener('click', () => onSetPin(btn.dataset.pinUser));
+  });
+
+  container.querySelectorAll('button[data-toggle-admin]').forEach(btn => {
+    btn.addEventListener('click', () => onToggleAdmin(btn.dataset.toggleAdmin, btn.dataset.current === '1'));
+  });
+}
+
+async function onToggleAdmin(name, current) {
+  const next = !current;
+  const ok = await confirmModal({
+    title: next ? `Gør «${name}» til admin?` : `Fjern admin fra «${name}»?`,
+    text: next
+      ? 'Brugeren får adgang til at oprette/slette produkter, brugere og rydde log.'
+      : 'Brugeren mister admin-rettigheder.',
+    confirmLabel: next ? 'Gør til admin' : 'Fjern admin',
+    danger: !next
+  });
+  if (!ok) return;
+  try {
+    await dbAdminSetAdmin(name, next);
+    const u = state.users.find(x => x.name === name);
+    if (u) u.is_admin = next;
+    renderUsersList();
+    toast(next ? `«${name}» er nu admin` : `Admin fjernet fra «${name}»`, 'success');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
+}
+
+async function onSetPin(name) {
+  let hasPin = false;
+  try { hasPin = await dbUserHasPin(name); } catch (e) { toast('Fejl: ' + e.message, 'danger'); return; }
+
+  const isSelf = state.currentUser === name;
+
+  if (!hasPin) {
+    if (!isSelf && !state.isAdmin) {
+      toast('Kun brugeren selv eller en admin kan sætte PIN', 'danger');
+      return;
+    }
+    const pin = await confirmModal({
+      title: `Sæt PIN for «${name}»`,
+      text: 'Ny 4-cifret PIN.', confirmLabel: 'Gem PIN', danger: false, input: true
+    });
+    if (pin === null) return;
+    if (!/^[0-9]{4}$/.test(pin)) { toast('PIN skal være 4 cifre', 'danger'); return; }
+    try {
+      if (state.isAdmin && !isSelf) await dbAdminSetUserPin(name, pin);
+      else await dbSetPin(name, pin);
+      toast(`PIN sat for «${name}»`, 'success');
+      if (isSelf) {
+        state.adminPin = (await dbUserIsAdmin(name)) ? pin : null;
+        state.isAdmin = !!state.adminPin;
+        applyAdminUI();
+      }
+    } catch (e) { toast('Fejl: ' + e.message, 'danger'); }
+    return;
+  }
+
+  if (state.isAdmin && !isSelf) {
+    const pin = await confirmModal({
+      title: `Nulstil PIN for «${name}»`,
+      text: 'Skriv en ny 4-cifret PIN. Den gamle overskrives.',
+      confirmLabel: 'Nulstil PIN', danger: true, input: true
+    });
+    if (pin === null) return;
+    if (!/^[0-9]{4}$/.test(pin)) { toast('PIN skal være 4 cifre', 'danger'); return; }
+    try {
+      await dbAdminSetUserPin(name, pin);
+      toast(`PIN nulstillet for «${name}»`, 'success');
+    } catch (e) { toast('Fejl: ' + e.message, 'danger'); }
+    return;
+  }
+
+  if (isSelf) {
+    const oldPin = await confirmModal({
+      title: 'Skift egen PIN', text: 'Indtast NUVÆRENDE PIN.',
+      confirmLabel: 'Næste', danger: false, input: true
+    });
+    if (oldPin === null) return;
+    const newPin = await confirmModal({
+      title: 'Skift egen PIN', text: 'Indtast NY 4-cifret PIN.',
+      confirmLabel: 'Skift PIN', danger: false, input: true
+    });
+    if (newPin === null) return;
+    if (!/^[0-9]{4}$/.test(newPin)) { toast('PIN skal være 4 cifre', 'danger'); return; }
+    try {
+      await dbChangeUserPin(name, oldPin, newPin);
+      if (state.isAdmin) state.adminPin = newPin;
+      toast('PIN skiftet', 'success');
+    } catch (e) { toast('Fejl: ' + e.message, 'danger'); }
+    return;
+  }
+
+  toast('Kun brugeren selv eller en admin kan ændre PIN', 'danger');
 }
 
 async function onDeleteUser(id, name) {
@@ -2233,11 +2833,12 @@ async function onDeleteUser(id, name) {
   });
   if (!ok) return;
   try {
-    await dbDeleteUser(id);
+    await dbAdminDeleteUser(id);
     state.users = state.users.filter(u => u.id !== id);
     if (isCurrent) {
       state.currentUser = null;
       localStorage.removeItem(USER_KEY);
+      clearAdminSession();
     }
     renderUsersList();
     renderAll();
@@ -2263,10 +2864,70 @@ function wireEvents() {
   });
 
   // User picker
-  document.getElementById('user-select').addEventListener('change', (e) => {
-    state.currentUser = e.target.value || null;
-    if (state.currentUser) localStorage.setItem(USER_KEY, state.currentUser);
-    else localStorage.removeItem(USER_KEY);
+  document.getElementById('user-select').addEventListener('change', async (e) => {
+    const prevUser = state.currentUser;
+    const picked = e.target.value || null;
+    clearAdminSession();
+
+    if (picked) {
+      let hasPin = false;
+      try {
+        hasPin = await dbUserHasPin(picked);
+      } catch (err) {
+        toast('Kunne ikke tjekke PIN: ' + err.message, 'danger');
+        e.target.value = prevUser || '';
+        return;
+      }
+
+      let pinUsed = null;
+      if (hasPin) {
+        const pin = await confirmModal({
+          title: `PIN for «${picked}»`,
+          text: 'Indtast din 4-cifrede PIN.',
+          confirmLabel: 'Log ind',
+          danger: false,
+          input: true
+        });
+        if (pin === null) {
+          e.target.value = prevUser || '';
+          return;
+        }
+        let ok = false;
+        try {
+          ok = await dbVerifyPin(picked, pin);
+        } catch (err) {
+          toast('Fejl ved PIN-tjek: ' + err.message, 'danger');
+          e.target.value = prevUser || '';
+          return;
+        }
+        if (!ok) {
+          toast('Forkert PIN', 'danger');
+          e.target.value = prevUser || '';
+          return;
+        }
+        pinUsed = pin;
+      }
+
+      let isAdmin = false;
+      try {
+        isAdmin = await dbUserIsAdmin(picked);
+      } catch (err) {
+        toast('Kunne ikke tjekke rolle: ' + err.message, 'danger');
+      }
+
+      state.currentUser = picked;
+      localStorage.setItem(USER_KEY, picked);
+      state.isAdmin = isAdmin && !!pinUsed;
+      state.adminPin = state.isAdmin ? pinUsed : null;
+      applyAdminUI();
+
+      if (isAdmin && !pinUsed) {
+        toast('Du er administrator — sæt en PIN for at låse admin-funktioner op', 'danger');
+      }
+    } else {
+      state.currentUser = null;
+      localStorage.removeItem(USER_KEY);
+    }
     renderAll();
   });
 
@@ -2288,7 +2949,7 @@ function wireEvents() {
       return;
     }
     try {
-      const u = await dbAddUser(name);
+      const u = await dbAdminAddUser(name);
       if (!state.users.find(x => x.id === u.id)) state.users.push(u);
       input.value = '';
       renderUsersList();
@@ -2324,10 +2985,9 @@ function wireEvents() {
       return;
     }
     try {
-      const p = await dbAddProduct({ name, stock, low_threshold: low });
+      const p = await dbAdminAddProduct({ name, stock, low_threshold: low });
       if (!state.products.find(x => x.id === p.id)) state.products.push(p);
       state.products.sort((a,b) => a.name.localeCompare(b.name));
-      await dbLogActivity({ type: 'create', product_id: p.id, product_name: p.name, delta: stock, note: 'Oprettet' });
       document.getElementById('add-form-wrap').classList.remove('open');
       document.getElementById('add-product-form').reset();
       document.getElementById('np-stock').value = 0;
@@ -2349,13 +3009,88 @@ function wireEvents() {
     });
     if (!ok) return;
     try {
-      await dbClearActivities();
+      await dbAdminClearActivities();
       state.activities = [];
       renderAll();
       toast('Loggen ryddet');
     } catch (e) {
       toast('Fejl: ' + e.message, 'danger');
     }
+  });
+
+  document.getElementById('show-add-order').addEventListener('click', () => {
+    const wrap = document.getElementById('add-order-wrap');
+    wrap.classList.toggle('open');
+    if (wrap.classList.contains('open')) {
+      populateProductSelect('no-product');
+      document.getElementById('no-product').focus();
+    }
+  });
+  document.getElementById('cancel-add-order').addEventListener('click', () => {
+    document.getElementById('add-order-wrap').classList.remove('open');
+    document.getElementById('add-order-form').reset();
+    document.getElementById('no-qty').value = 1;
+  });
+  document.getElementById('add-order-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!state.currentUser) { toast('Vælg en bruger først', 'danger'); return; }
+    const productId = document.getElementById('no-product').value;
+    const qty = parseInt(document.getElementById('no-qty').value, 10);
+    const supplier = document.getElementById('no-supplier').value.trim() || null;
+    const note = document.getElementById('no-note').value.trim() || null;
+    if (!productId) { toast('Vælg et produkt', 'danger'); return; }
+    if (!qty || qty < 1) { toast('Antal skal være mindst 1', 'danger'); return; }
+    const p = state.products.find(x => x.id === productId);
+    if (!p) { toast('Produkt ikke fundet', 'danger'); return; }
+    try {
+      const row = await dbAddOrder({
+        product_id: productId, product_name: p.name,
+        quantity: qty, supplier, note, ordered_by: state.currentUser
+      });
+      if (!state.orders.find(x => x.id === row.id)) state.orders.unshift(row);
+      document.getElementById('add-order-wrap').classList.remove('open');
+      document.getElementById('add-order-form').reset();
+      document.getElementById('no-qty').value = 1;
+      renderAll();
+      toast(`Bestilling tilføjet: ${qty} × «${p.name}»`, 'success');
+    } catch (err) { toast('Fejl: ' + err.message, 'danger'); }
+  });
+
+  document.getElementById('show-add-return').addEventListener('click', () => {
+    const wrap = document.getElementById('add-return-wrap');
+    wrap.classList.toggle('open');
+    if (wrap.classList.contains('open')) {
+      populateProductSelect('nr-product');
+      document.getElementById('nr-product').focus();
+    }
+  });
+  document.getElementById('cancel-add-return').addEventListener('click', () => {
+    document.getElementById('add-return-wrap').classList.remove('open');
+    document.getElementById('add-return-form').reset();
+    document.getElementById('nr-qty').value = 1;
+  });
+  document.getElementById('add-return-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!state.currentUser) { toast('Vælg en bruger først', 'danger'); return; }
+    const productId = document.getElementById('nr-product').value;
+    const qty = parseInt(document.getElementById('nr-qty').value, 10);
+    const note = document.getElementById('nr-note').value.trim() || null;
+    if (!productId) { toast('Vælg et produkt', 'danger'); return; }
+    if (!qty || qty < 1) { toast('Antal skal være mindst 1', 'danger'); return; }
+    const p = state.products.find(x => x.id === productId);
+    if (!p) { toast('Produkt ikke fundet', 'danger'); return; }
+    try {
+      const row = await dbAddReturn({
+        product_id: productId, product_name: p.name,
+        quantity: qty, note, registered_by: state.currentUser
+      });
+      if (!state.returns.find(x => x.id === row.id)) state.returns.unshift(row);
+      document.getElementById('add-return-wrap').classList.remove('open');
+      document.getElementById('add-return-form').reset();
+      document.getElementById('nr-qty').value = 1;
+      renderAll();
+      toast(`Retur tilføjet: ${qty} × «${p.name}»`, 'success');
+    } catch (err) { toast('Fejl: ' + err.message, 'danger'); }
   });
 }
 
@@ -2413,6 +3148,10 @@ async function init() {
   document.getElementById('app').classList.remove('hidden');
   renderAll();
   setConnected(state.connected || demoMode);
+
+  if (state.currentUser) {
+    document.getElementById('user-select').dispatchEvent(new Event('change'));
+  }
 }
 
 init().catch(e => {
