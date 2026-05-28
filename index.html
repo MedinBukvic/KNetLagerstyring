@@ -1279,6 +1279,10 @@ on conflict (name) do nothing;</pre>
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 0 0-4-4H4"/></svg>
         Returlager <span class="tab-badge" id="count-returns">0</span>
       </button>
+      <button class="tab" data-tab="writeoffs" role="tab">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+        Afskrivning <span class="tab-badge" id="count-writeoffs">0</span>
+      </button>
       <button class="tab" data-tab="log" role="tab">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
         Aktivitetslog <span class="tab-badge" id="count-activities">0</span>
@@ -1462,6 +1466,17 @@ on conflict (name) do nothing;</pre>
       <div id="returns-content"></div>
     </section>
 
+    <!-- ============ AFSKRIVNING ============ -->
+    <section id="view-writeoffs" class="view hidden">
+      <div class="page-header">
+        <div>
+          <h1 class="page-title">Afskrivning</h1>
+          <p class="page-subtitle">Varer kasseret fra returlager. Rører ikke hovedlageret — kun et regnskabs-spor.</p>
+        </div>
+      </div>
+      <div id="writeoffs-content"></div>
+    </section>
+
     <!-- ============ DASHBOARD ============ -->
     <section id="view-dashboard" class="view hidden">
       <div class="page-header">
@@ -1586,6 +1601,7 @@ const state = {
   users: [],
   orders: [],
   returns: [],
+  writeOffs: [],
   currentUser: localStorage.getItem(USER_KEY) || null,
   isAdmin: false,
   adminPin: null,
@@ -1800,26 +1816,30 @@ async function loadAll() {
     state.users = data.users;
     state.orders = data.orders || [];
     state.returns = data.returns || [];
+    state.writeOffs = data.writeOffs || [];
     state.connected = true;
     return;
   }
-  const [pRes, aRes, uRes, oRes, rRes] = await Promise.all([
+  const [pRes, aRes, uRes, oRes, rRes, wRes] = await Promise.all([
     supabase.from('products').select('*').order('name', { ascending: true }),
     supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(500),
     supabase.from('app_users').select('*').order('name', { ascending: true }),
     supabase.from('orders').select('*').order('created_at', { ascending: false }),
-    supabase.from('returns').select('*').order('created_at', { ascending: false })
+    supabase.from('returns').select('*').order('created_at', { ascending: false }),
+    supabase.from('write_offs').select('*').order('created_at', { ascending: false })
   ]);
   if (pRes.error) throw new Error('Kan ikke hente produkter: ' + pRes.error.message);
   if (aRes.error) throw new Error('Kan ikke hente aktiviteter: ' + aRes.error.message);
   if (uRes.error) throw new Error('Kan ikke hente brugere: ' + uRes.error.message);
   if (oRes.error) throw new Error('Kan ikke hente bestillinger: ' + oRes.error.message);
   if (rRes.error) throw new Error('Kan ikke hente returer: ' + rRes.error.message);
+  if (wRes.error) throw new Error('Kan ikke hente afskrivninger: ' + wRes.error.message);
   state.products = pRes.data;
   state.activities = aRes.data;
   state.users = uRes.data;
   state.orders = oRes.data;
   state.returns = rRes.data;
+  state.writeOffs = wRes.data;
 }
 
 async function dbAddProduct(p) {
@@ -2086,6 +2106,53 @@ async function dbAdminDeleteReturn(id) {
   if (error) throw error;
 }
 
+async function dbReturnToStock(returnId) {
+  if (demoMode) {
+    const r = state.returns.find(x => x.id === returnId);
+    if (!r) throw new Error('Retur findes ikke');
+    const p = state.products.find(x => x.id === r.product_id);
+    if (p) p.stock += r.quantity;
+    state.activities.unshift({
+      id: uid(), timestamp: new Date().toISOString(),
+      user_name: state.currentUser || '—', product_id: r.product_id,
+      product_name: r.product_name, delta: r.quantity, type: 'adjust',
+      note: 'Retur tilbage på lager'
+    });
+    state.returns = state.returns.filter(x => x.id !== returnId);
+    persistDemo(); return;
+  }
+  const { error } = await supabase.rpc('return_to_stock', {
+    p_return_id: returnId, p_user: state.currentUser || ''
+  });
+  if (error) throw error;
+}
+
+async function dbWriteOffReturn(returnId) {
+  if (demoMode) {
+    const r = state.returns.find(x => x.id === returnId);
+    if (!r) throw new Error('Retur findes ikke');
+    state.writeOffs.unshift({
+      id: uid(), product_id: r.product_id, product_name: r.product_name,
+      quantity: r.quantity, note: r.note, written_off_by: state.currentUser || '—',
+      created_at: new Date().toISOString()
+    });
+    state.returns = state.returns.filter(x => x.id !== returnId);
+    persistDemo(); return;
+  }
+  const { error } = await supabase.rpc('write_off_return', {
+    p_return_id: returnId, p_user: state.currentUser || ''
+  });
+  if (error) throw error;
+}
+
+async function dbAdminDeleteWriteOff(id) {
+  if (demoMode) { state.writeOffs = state.writeOffs.filter(x => x.id !== id); persistDemo(); return; }
+  const { error } = await supabase.rpc('admin_delete_write_off', {
+    p_admin: state.currentUser, p_pin: state.adminPin, p_id: id
+  });
+  if (error) throw error;
+}
+
 async function dbClearActivities() {
   if (demoMode) {
     state.activities = [];
@@ -2097,7 +2164,7 @@ async function dbClearActivities() {
 }
 
 function persistDemo() {
-  demoStore.save({ products: state.products, activities: state.activities, users: state.users, orders: state.orders, returns: state.returns });
+  demoStore.save({ products: state.products, activities: state.activities, users: state.users, orders: state.orders, returns: state.returns, writeOffs: state.writeOffs });
 }
 
 /* ===================================================================
@@ -2117,6 +2184,7 @@ function subscribeRealtime() {
     .on('postgres_changes', { event: '*', schema: 'public', table: 'app_users' }, handleUserChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, handleOrderChange)
     .on('postgres_changes', { event: '*', schema: 'public', table: 'returns' }, handleReturnChange)
+    .on('postgres_changes', { event: '*', schema: 'public', table: 'write_offs' }, handleWriteOffChange)
     .subscribe((status) => {
       if (status === 'SUBSCRIBED') setConnected(true);
       else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT' || status === 'CLOSED') setConnected(false);
@@ -2142,6 +2210,16 @@ function handleReturnChange(payload) {
     if (!state.returns.find(x => x.id === row.id)) state.returns.unshift(row);
   } else if (eventType === 'DELETE') {
     state.returns = state.returns.filter(x => x.id !== old.id);
+  }
+  renderAll();
+}
+
+function handleWriteOffChange(payload) {
+  const { eventType, new: row, old } = payload;
+  if (eventType === 'INSERT') {
+    if (!state.writeOffs.find(x => x.id === row.id)) state.writeOffs.unshift(row);
+  } else if (eventType === 'DELETE') {
+    state.writeOffs = state.writeOffs.filter(x => x.id !== old.id);
   }
   renderAll();
 }
@@ -2221,6 +2299,7 @@ function renderAll() {
   if (currentTab === 'log') renderLog();
   if (currentTab === 'orders') renderOrders();
   if (currentTab === 'returns') renderReturns();
+  if (currentTab === 'writeoffs') renderWriteOffs();
   if (currentTab === 'dashboard') renderDashboard();
 }
 
@@ -2229,6 +2308,7 @@ function renderTabBadges() {
   document.getElementById('count-activities').textContent = state.activities.length;
   document.getElementById('count-orders').textContent = state.orders.length;
   document.getElementById('count-returns').textContent = state.returns.length;
+  document.getElementById('count-writeoffs').textContent = state.writeOffs.length;
 }
 
 function renderUserPicker() {
@@ -2721,15 +2801,124 @@ function renderReturns() {
         </div>
       </div>
       <div class="product-actions">
+        <button class="btn btn-primary btn-sm" data-return-stock="${r.id}" ${!state.currentUser ? 'disabled' : ''}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 10 4 15 9 20"/><path d="M20 4v7a4 4 0 0 1-4 4H4"/></svg>
+          Tilbage på lager
+        </button>
+        <button class="btn btn-ghost btn-sm" data-write-off="${r.id}" ${!state.currentUser ? 'disabled' : ''}>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          Afskriv
+        </button>
         <button class="icon-btn delete admin-only" data-delete-return="${r.id}" data-name="${escapeHtml(r.product_name)}" title="Slet retur" aria-label="Slet retur">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
         </button>
       </div>
     </div>`).join('') + '</div>';
 
+  container.querySelectorAll('button[data-return-stock]').forEach(btn => {
+    btn.addEventListener('click', () => onReturnToStock(btn.dataset.returnStock));
+  });
+  container.querySelectorAll('button[data-write-off]').forEach(btn => {
+    btn.addEventListener('click', () => onWriteOffReturn(btn.dataset.writeOff));
+  });
   container.querySelectorAll('button[data-delete-return]').forEach(btn => {
     btn.addEventListener('click', () => onDeleteReturn(btn.dataset.deleteReturn, btn.dataset.name));
   });
+}
+
+async function onReturnToStock(id) {
+  const r = state.returns.find(x => x.id === id);
+  if (!r) return;
+  if (!state.currentUser) { toast('Vælg en bruger først', 'danger'); return; }
+  const ok = await confirmModal({
+    title: `Læg «${r.product_name}» tilbage på lager?`,
+    text: `${r.quantity} stk. adderes til hovedlageret og fjernes fra returlager.`,
+    confirmLabel: 'Tilbage på lager', danger: false
+  });
+  if (!ok) return;
+  try {
+    await dbReturnToStock(id);
+    state.returns = state.returns.filter(x => x.id !== id);
+    const p = state.products.find(x => x.id === r.product_id);
+    if (p) p.stock += r.quantity;
+    renderAll();
+    toast(`${r.quantity} stk. «${r.product_name}» lagt tilbage på lager`, 'success');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
+}
+
+async function onWriteOffReturn(id) {
+  const r = state.returns.find(x => x.id === id);
+  if (!r) return;
+  if (!state.currentUser) { toast('Vælg en bruger først', 'danger'); return; }
+  const ok = await confirmModal({
+    title: `Afskriv «${r.product_name}»?`,
+    text: `${r.quantity} stk. flyttes til Afskrivning. Hovedlageret påvirkes ikke.`,
+    confirmLabel: 'Afskriv', danger: true
+  });
+  if (!ok) return;
+  try {
+    await dbWriteOffReturn(id);
+    state.returns = state.returns.filter(x => x.id !== id);
+    renderAll();
+    toast(`«${r.product_name}» afskrevet`, 'success');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
+}
+
+function renderWriteOffs() {
+  const container = document.getElementById('writeoffs-content');
+  if (state.writeOffs.length === 0) {
+    container.innerHTML = `
+      <div class="card">
+        <div class="empty">
+          <div class="empty-icon"><svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 8v13H3V8"/><rect x="1" y="3" width="22" height="5" rx="1"/><line x1="10" y1="12" x2="14" y2="12"/></svg></div>
+          <div class="empty-title">Ingen afskrivninger</div>
+          <p class="empty-text">Når du afskriver en retur, vises den her.</p>
+        </div>
+      </div>`;
+    return;
+  }
+  container.innerHTML = '<div class="product-list">' + state.writeOffs.map(w => `
+    <div class="product-card">
+      <div class="product-info">
+        <div class="product-name">${escapeHtml(w.product_name)} <span class="muted" style="font-weight:500">× ${w.quantity}</span></div>
+        <div class="product-meta">
+          <span>Afskrevet af <strong>${escapeHtml(w.written_off_by || '—')}</strong></span>
+          <span>·</span>
+          <span>${formatTime(w.created_at)}</span>
+          ${w.note ? `<span>·</span><span>${escapeHtml(w.note)}</span>` : ''}
+        </div>
+      </div>
+      <div class="product-actions">
+        <button class="icon-btn delete admin-only" data-delete-writeoff="${w.id}" data-name="${escapeHtml(w.product_name)}" title="Slet afskrivning" aria-label="Slet afskrivning">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-2 14a2 2 0 0 1-2 2H9a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg>
+        </button>
+      </div>
+    </div>`).join('') + '</div>';
+
+  container.querySelectorAll('button[data-delete-writeoff]').forEach(btn => {
+    btn.addEventListener('click', () => onDeleteWriteOff(btn.dataset.deleteWriteoff, btn.dataset.name));
+  });
+}
+
+async function onDeleteWriteOff(id, name) {
+  const ok = await confirmModal({
+    title: `Slet afskrivning af «${name}»?`,
+    text: 'Afskrivnings-posten fjernes fra oversigten.',
+    confirmLabel: 'Slet'
+  });
+  if (!ok) return;
+  try {
+    await dbAdminDeleteWriteOff(id);
+    state.writeOffs = state.writeOffs.filter(x => x.id !== id);
+    renderAll();
+    toast('Afskrivning slettet');
+  } catch (e) {
+    toast('Fejl: ' + e.message, 'danger');
+  }
 }
 
 async function onDeleteReturn(id, name) {
