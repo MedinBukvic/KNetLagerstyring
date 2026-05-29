@@ -199,6 +199,7 @@
   .btn-sm { padding: 6px 10px; font-size: 12px; }
 
   body:not(.is-admin) .admin-only { display: none !important; }
+  body.hide-restricted .tek-restricted { display: none !important; }
   .admin-badge {
     display: inline-flex; align-items: center;
     font-size: 10px; font-weight: 700; letter-spacing: 0.04em;
@@ -1057,6 +1058,17 @@
   }
   .user-list-row:last-child { border-bottom: none; }
   .user-list-row:hover { background: var(--bg); }
+  .user-group-header {
+    font-size: 11px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--text-muted, #6b7280); padding: 14px 4px 6px;
+    border-bottom: 1px solid var(--border); margin-top: 4px;
+  }
+  .user-group-header:first-child { margin-top: 0; }
+  .group-badge {
+    display: inline-flex; align-items: center; font-size: 10px; font-weight: 600;
+    color: var(--text-muted, #6b7280); background: var(--bg, #f3f4f6);
+    border: 1px solid var(--border); padding: 2px 7px; border-radius: 999px; margin-left: 6px;
+  }
   .user-name-cell {
     display: flex;
     align-items: center;
@@ -1267,11 +1279,11 @@ on conflict (name) do nothing;</pre>
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
         Lager <span class="tab-badge" id="count-products">0</span>
       </button>
-      <button class="tab" data-tab="count" role="tab">
+      <button class="tab tek-restricted" data-tab="count" role="tab">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><path d="M9 14l2 2 4-4"/></svg>
         Statusoptælling
       </button>
-      <button class="tab" data-tab="orders" role="tab">
+      <button class="tab tek-restricted" data-tab="orders" role="tab">
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2 3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"/><line x1="3" y1="6" x2="21" y2="6"/><path d="M16 10a4 4 0 0 1-8 0"/></svg>
         Bestillinger <span class="tab-badge" id="count-orders">0</span>
       </button>
@@ -1349,7 +1361,7 @@ on conflict (name) do nothing;</pre>
     </section>
 
     <!-- ============ COUNT ============ -->
-    <section id="view-count" class="view hidden">
+    <section id="view-count" class="view hidden tek-restricted">
       <div class="page-header">
         <div>
           <h1 class="page-title">Statusoptælling</h1>
@@ -1375,7 +1387,7 @@ on conflict (name) do nothing;</pre>
     </section>
 
     <!-- ============ BESTILLINGER ============ -->
-    <section id="view-orders" class="view hidden">
+    <section id="view-orders" class="view hidden tek-restricted">
       <div class="page-header">
         <div>
           <h1 class="page-title">Bestillinger</h1>
@@ -1512,6 +1524,7 @@ on conflict (name) do nothing;</pre>
     <p>Tilføj eller fjern brugere fra teamet. Tidligere log-poster bevarer navnet selv hvis brugeren slettes.</p>
     <form class="add-user-inline-form admin-only" id="add-user-form">
       <input type="text" id="new-user-name" placeholder="Nyt brugernavn..." autocomplete="off" />
+      <select id="new-user-group" aria-label="Gruppe"></select>
       <button type="submit" class="btn btn-primary">
         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
         Tilføj
@@ -1573,6 +1586,26 @@ on conflict (name) do nothing;</pre>
 
 <div class="img-lightbox-backdrop" id="img-lightbox"><img id="img-lightbox-img" src="" alt="" /></div>
 
+<div class="modal-backdrop" id="edit-user-backdrop">
+  <div class="modal">
+    <h3>Rediger bruger</h3>
+    <form id="edit-user-form">
+      <div class="form-field" style="margin-bottom:12px">
+        <label for="eu-name">Brugernavn</label>
+        <input type="text" id="eu-name" required autocomplete="off" />
+      </div>
+      <div class="form-field" style="margin-bottom:12px">
+        <label for="eu-group">Gruppe</label>
+        <select id="eu-group"></select>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn btn-ghost" id="eu-cancel">Annullér</button>
+        <button type="submit" class="btn btn-primary">Gem ændringer</button>
+      </div>
+    </form>
+  </div>
+</div>
+
 <script type="module">
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 
@@ -1599,6 +1632,7 @@ const state = {
   products: [],
   activities: [],
   users: [],
+  groups: [],
   orders: [],
   returns: [],
   writeOffs: [],
@@ -1817,16 +1851,24 @@ async function loadAll() {
     state.orders = data.orders || [];
     state.returns = data.returns || [];
     state.writeOffs = data.writeOffs || [];
+    state.groups = data.groups && data.groups.length ? data.groups : [
+      { id: uid(), name: 'Kolding.net', created_at: new Date().toISOString() },
+      { id: uid(), name: 'Teknikere', created_at: new Date().toISOString() }
+    ];
+    const defaultGroup = state.groups.find(g => g.name === 'Kolding.net') || state.groups[0];
+    state.users.forEach(u => { if (!u.group_id) u.group_id = defaultGroup.id; });
+    persistDemo();
     state.connected = true;
     return;
   }
-  const [pRes, aRes, uRes, oRes, rRes, wRes] = await Promise.all([
+  const [pRes, aRes, uRes, oRes, rRes, wRes, gRes] = await Promise.all([
     supabase.from('products').select('*').order('name', { ascending: true }),
     supabase.from('activities').select('*').order('timestamp', { ascending: false }).limit(500),
     supabase.from('app_users').select('*').order('name', { ascending: true }),
     supabase.from('orders').select('*').order('created_at', { ascending: false }),
     supabase.from('returns').select('*').order('created_at', { ascending: false }),
-    supabase.from('write_offs').select('*').order('created_at', { ascending: false })
+    supabase.from('write_offs').select('*').order('created_at', { ascending: false }),
+    supabase.from('groups').select('*').order('name', { ascending: true })
   ]);
   if (pRes.error) throw new Error('Kan ikke hente produkter: ' + pRes.error.message);
   if (aRes.error) throw new Error('Kan ikke hente aktiviteter: ' + aRes.error.message);
@@ -1834,12 +1876,14 @@ async function loadAll() {
   if (oRes.error) throw new Error('Kan ikke hente bestillinger: ' + oRes.error.message);
   if (rRes.error) throw new Error('Kan ikke hente returer: ' + rRes.error.message);
   if (wRes.error) throw new Error('Kan ikke hente afskrivninger: ' + wRes.error.message);
+  if (gRes.error) throw new Error('Kan ikke hente grupper: ' + gRes.error.message);
   state.products = pRes.data;
   state.activities = aRes.data;
   state.users = uRes.data;
   state.orders = oRes.data;
   state.returns = rRes.data;
   state.writeOffs = wRes.data;
+  state.groups = gRes.data;
 }
 
 async function dbAddProduct(p) {
@@ -1975,10 +2019,27 @@ async function dbAdminDeleteProduct(id) {
   if (error) throw error;
 }
 
-async function dbAdminAddUser(name) {
-  if (demoMode) return dbAddUser(name);
+async function dbAdminAddUser(name, groupId) {
+  if (demoMode) {
+    const u = { id: uid(), name, group_id: groupId || null, is_admin: false, created_at: new Date().toISOString() };
+    state.users.push(u); persistDemo(); return u;
+  }
   const { data, error } = await supabase.rpc('admin_add_user', {
-    p_admin: state.currentUser, p_pin: state.adminPin, p_new_name: name
+    p_admin: state.currentUser, p_pin: state.adminPin, p_new_name: name, p_group_id: groupId || null
+  });
+  if (error) throw error;
+  return data;
+}
+
+async function dbAdminUpdateUser(userId, name, groupId) {
+  if (demoMode) {
+    const u = state.users.find(x => x.id === userId);
+    if (u) { u.name = name; u.group_id = groupId || null; }
+    persistDemo(); return u;
+  }
+  const { data, error } = await supabase.rpc('admin_update_user', {
+    p_admin: state.currentUser, p_pin: state.adminPin,
+    p_user_id: userId, p_new_name: name, p_group_id: groupId || null
   });
   if (error) throw error;
   return data;
@@ -2164,7 +2225,7 @@ async function dbClearActivities() {
 }
 
 function persistDemo() {
-  demoStore.save({ products: state.products, activities: state.activities, users: state.users, orders: state.orders, returns: state.returns, writeOffs: state.writeOffs });
+  demoStore.save({ products: state.products, activities: state.activities, users: state.users, orders: state.orders, returns: state.returns, writeOffs: state.writeOffs, groups: state.groups });
 }
 
 /* ===================================================================
@@ -2272,6 +2333,7 @@ function handleUserChange(payload) {
       toast('Din admin-rolle er fjernet', 'danger');
       renderAll();
     }
+    if (row.name === state.currentUser) applyGroupRestrictions();
   }
   renderUserPicker();
   if (document.getElementById('users-modal-backdrop').classList.contains('open')) {
@@ -2339,6 +2401,26 @@ function clearAdminSession() {
   state.isAdmin = false;
   state.adminPin = null;
   applyAdminUI();
+  applyGroupRestrictions();
+}
+
+function currentUserGroupId() {
+  if (!state.currentUser) return null;
+  const u = state.users.find(x => x.name === state.currentUser);
+  return u ? u.group_id : null;
+}
+
+function applyGroupRestrictions() {
+  const groupName = groupNameById(currentUserGroupId());
+  const isRestricted = !state.isAdmin && groupName === 'Teknikere';
+  document.body.classList.toggle('hide-restricted', isRestricted);
+  if (isRestricted && (currentTab === 'orders' || currentTab === 'count')) {
+    currentTab = 'lager';
+    document.querySelectorAll('.tab').forEach(t => t.classList.toggle('active', t.dataset.tab === 'lager'));
+    document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
+    document.getElementById('view-lager').classList.remove('hidden');
+    renderAll();
+  }
 }
 
 function resizeImageToDataUrl(file, maxDim = 800, quality = 0.75) {
@@ -3053,13 +3135,33 @@ function closeUsersModal() {
   document.getElementById('users-modal-backdrop').classList.remove('open');
 }
 
+function groupNameById(id) {
+  const g = state.groups.find(x => x.id === id);
+  return g ? g.name : null;
+}
+
+function populateGroupSelect(selectId, selectedId) {
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  sel.innerHTML = '';
+  state.groups.forEach(g => {
+    const opt = document.createElement('option');
+    opt.value = g.id; opt.textContent = g.name;
+    if (g.id === selectedId) opt.selected = true;
+    sel.appendChild(opt);
+  });
+}
+
 function renderUsersList() {
   const container = document.getElementById('users-list-container');
+  populateGroupSelect('new-user-group', (state.groups.find(g => g.name === 'Kolding.net') || state.groups[0] || {}).id);
+
   if (state.users.length === 0) {
     container.innerHTML = `<div class="users-empty-mini">Ingen brugere — tilføj en herover.</div>`;
     return;
   }
-  container.innerHTML = state.users.map(u => {
+
+  const userRow = (u) => {
     const isActive = state.currentUser === u.name;
     const adminBadge = u.is_admin ? '<span class="admin-badge">Admin</span>' : '';
     const toggleLabel = u.is_admin ? 'Fjern admin' : 'Gør til admin';
@@ -3074,6 +3176,9 @@ function renderUsersList() {
         </div>
         <div style="display:flex;gap:6px;align-items:center;">
         <button class="btn btn-sm ${toggleClass} admin-only" data-toggle-admin="${escapeHtml(u.name)}" data-current="${u.is_admin ? '1' : '0'}">${toggleLabel}</button>
+        <button class="icon-btn admin-only" data-edit-user="${u.id}" title="Rediger ${escapeHtml(u.name)}" aria-label="Rediger bruger">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+        </button>
         <button class="icon-btn" data-pin-user="${escapeHtml(u.name)}" title="PIN for ${escapeHtml(u.name)}" aria-label="PIN">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
         </button>
@@ -3082,19 +3187,54 @@ function renderUsersList() {
         </button>
         </div>
       </div>`;
-  }).join('');
+  };
+
+  let html = '';
+  const sortUsers = (arr) => arr.slice().sort((a, b) => a.name.localeCompare(b.name));
+
+  state.groups.forEach(g => {
+    const members = sortUsers(state.users.filter(u => u.group_id === g.id));
+    if (members.length === 0) return;
+    html += `<div class="user-group-header">${escapeHtml(g.name)} · ${members.length}</div>`;
+    html += members.map(userRow).join('');
+  });
+
+  const ungrouped = sortUsers(state.users.filter(u => !u.group_id || !groupNameById(u.group_id)));
+  if (ungrouped.length > 0) {
+    html += `<div class="user-group-header">Ingen gruppe · ${ungrouped.length}</div>`;
+    html += ungrouped.map(userRow).join('');
+  }
+
+  container.innerHTML = html;
 
   container.querySelectorAll('button[data-delete-user]').forEach(btn => {
     btn.addEventListener('click', () => onDeleteUser(btn.dataset.deleteUser, btn.dataset.name));
   });
-
   container.querySelectorAll('button[data-pin-user]').forEach(btn => {
     btn.addEventListener('click', () => onSetPin(btn.dataset.pinUser));
   });
-
   container.querySelectorAll('button[data-toggle-admin]').forEach(btn => {
     btn.addEventListener('click', () => onToggleAdmin(btn.dataset.toggleAdmin, btn.dataset.current === '1'));
   });
+  container.querySelectorAll('button[data-edit-user]').forEach(btn => {
+    btn.addEventListener('click', () => openEditUser(btn.dataset.editUser));
+  });
+}
+
+let editUserId = null;
+
+function openEditUser(id) {
+  const u = state.users.find(x => x.id === id);
+  if (!u) return;
+  editUserId = id;
+  document.getElementById('eu-name').value = u.name;
+  populateGroupSelect('eu-group', u.group_id);
+  document.getElementById('edit-user-backdrop').classList.add('open');
+}
+
+function closeEditUser() {
+  document.getElementById('edit-user-backdrop').classList.remove('open');
+  editUserId = null;
 }
 
 async function onToggleAdmin(name, current) {
@@ -3285,6 +3425,7 @@ function wireEvents() {
       state.isAdmin = isAdmin && !!pinUsed;
       state.adminPin = state.isAdmin ? pinUsed : null;
       applyAdminUI();
+      applyGroupRestrictions();
 
       if (isAdmin && !pinUsed) {
         toast('Du er administrator — sæt en PIN for at låse admin-funktioner op', 'danger');
@@ -3308,18 +3449,53 @@ function wireEvents() {
     e.preventDefault();
     const input = document.getElementById('new-user-name');
     const name = input.value.trim();
+    const groupId = document.getElementById('new-user-group').value || null;
     if (!name) { toast('Skriv et navn', 'danger'); return; }
     if (state.users.find(u => u.name.toLowerCase() === name.toLowerCase())) {
       toast('Brugeren findes allerede', 'danger');
       return;
     }
     try {
-      const u = await dbAdminAddUser(name);
+      const u = await dbAdminAddUser(name, groupId);
       if (!state.users.find(x => x.id === u.id)) state.users.push(u);
       input.value = '';
       renderUsersList();
       renderUserPicker();
       toast(`«${name}» tilføjet`, 'success');
+    } catch (err) {
+      toast('Fejl: ' + err.message, 'danger');
+    }
+  });
+
+  document.getElementById('eu-cancel').addEventListener('click', closeEditUser);
+  document.getElementById('edit-user-backdrop').addEventListener('click', (e) => {
+    if (e.target.id === 'edit-user-backdrop') closeEditUser();
+  });
+  document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    if (!state.isAdmin) { toast('Kun admins kan redigere brugere', 'danger'); return; }
+    if (!editUserId) return;
+    const u = state.users.find(x => x.id === editUserId);
+    if (!u) { closeEditUser(); return; }
+    const oldName = u.name;
+    const name = document.getElementById('eu-name').value.trim();
+    const groupId = document.getElementById('eu-group').value || null;
+    if (!name) { toast('Brugernavn må ikke være tomt', 'danger'); return; }
+    const dup = state.users.find(x => x.id !== editUserId && x.name.toLowerCase() === name.toLowerCase());
+    if (dup) { toast('Brugernavn findes allerede', 'danger'); return; }
+    try {
+      const updated = await dbAdminUpdateUser(editUserId, name, groupId);
+      const i = state.users.findIndex(x => x.id === editUserId);
+      if (i >= 0 && updated) state.users[i] = updated;
+      else if (i >= 0) { state.users[i].name = name; state.users[i].group_id = groupId; }
+      if (state.currentUser === oldName) {
+        state.currentUser = name;
+        localStorage.setItem(USER_KEY, name);
+      }
+      closeEditUser();
+      renderAll();
+      renderUsersList();
+      toast('Bruger opdateret', 'success');
     } catch (err) {
       toast('Fejl: ' + err.message, 'danger');
     }
