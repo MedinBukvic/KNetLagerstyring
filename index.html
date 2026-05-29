@@ -2,8 +2,16 @@
 <html lang="da">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
 <title>Lagerstyring — Team inventory</title>
+<link rel="manifest" href="/manifest.json" />
+<meta name="theme-color" content="#2563eb" />
+<link rel="apple-touch-icon" href="/icon-180.png" />
+<link rel="icon" type="image/png" sizes="32x32" href="/icon-32.png" />
+<link rel="icon" type="image/png" sizes="16x16" href="/icon-16.png" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="default" />
+<meta name="apple-mobile-web-app-title" content="Lager" />
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -1616,6 +1624,12 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.45.0';
 // ---- Optional hardcoded config (set these to skip the setup wizard for all users) ----
 const HARDCODED_SUPABASE_URL = 'https://krvrrdvwqxxkssmxbjqq.supabase.co';
 const HARDCODED_SUPABASE_KEY = 'sb_publishable_IaUNgURCzmsOJIhYvtGjjA_IXbiqaAZ';
+
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  });
+}
 
 const CONFIG_KEY = 'stockbuddy_config_v2';
 const USER_KEY = 'stockbuddy_user';
