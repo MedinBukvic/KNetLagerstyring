@@ -1687,7 +1687,7 @@ function toast(msg, kind = '') {
 }
 
 /* ------------------ MODAL ------------------ */
-function confirmModal({ title, text, confirmLabel = 'OK', danger = true, input = false, defaultValue = '' }) {
+function confirmModal({ title, text, confirmLabel = 'OK', danger = true, input = false, defaultValue = '', inputMode = null }) {
   return new Promise(resolve => {
     const backdrop = document.getElementById('modal-backdrop');
     document.getElementById('modal-title').textContent = title;
@@ -1700,6 +1700,19 @@ function confirmModal({ title, text, confirmLabel = 'OK', danger = true, input =
     const inputEl = document.getElementById('modal-input');
     inputWrap.style.display = input ? 'block' : 'none';
     if (input) {
+      if (inputMode === 'numeric') {
+        inputEl.type = 'tel';
+        inputEl.setAttribute('inputmode', 'numeric');
+        inputEl.setAttribute('pattern', '[0-9]*');
+        inputEl.setAttribute('maxlength', '4');
+        inputEl.setAttribute('autocomplete', 'off');
+      } else {
+        inputEl.type = 'text';
+        inputEl.removeAttribute('inputmode');
+        inputEl.removeAttribute('pattern');
+        inputEl.removeAttribute('maxlength');
+        inputEl.removeAttribute('autocomplete');
+      }
       inputEl.value = defaultValue;
       setTimeout(() => inputEl.focus(), 50);
     }
@@ -3272,7 +3285,7 @@ async function onSetPin(name) {
     }
     const pin = await confirmModal({
       title: `Sæt PIN for «${name}»`,
-      text: 'Ny 4-cifret PIN.', confirmLabel: 'Gem PIN', danger: false, input: true
+      text: 'Ny 4-cifret PIN.', confirmLabel: 'Gem PIN', danger: false, input: true, inputMode: 'numeric'
     });
     if (pin === null) return;
     if (!/^[0-9]{4}$/.test(pin)) { toast('PIN skal være 4 cifre', 'danger'); return; }
@@ -3293,7 +3306,7 @@ async function onSetPin(name) {
     const pin = await confirmModal({
       title: `Nulstil PIN for «${name}»`,
       text: 'Skriv en ny 4-cifret PIN. Den gamle overskrives.',
-      confirmLabel: 'Nulstil PIN', danger: true, input: true
+      confirmLabel: 'Nulstil PIN', danger: true, input: true, inputMode: 'numeric'
     });
     if (pin === null) return;
     if (!/^[0-9]{4}$/.test(pin)) { toast('PIN skal være 4 cifre', 'danger'); return; }
@@ -3307,12 +3320,12 @@ async function onSetPin(name) {
   if (isSelf) {
     const oldPin = await confirmModal({
       title: 'Skift egen PIN', text: 'Indtast NUVÆRENDE PIN.',
-      confirmLabel: 'Næste', danger: false, input: true
+      confirmLabel: 'Næste', danger: false, input: true, inputMode: 'numeric'
     });
     if (oldPin === null) return;
     const newPin = await confirmModal({
       title: 'Skift egen PIN', text: 'Indtast NY 4-cifret PIN.',
-      confirmLabel: 'Skift PIN', danger: false, input: true
+      confirmLabel: 'Skift PIN', danger: false, input: true, inputMode: 'numeric'
     });
     if (newPin === null) return;
     if (!/^[0-9]{4}$/.test(newPin)) { toast('PIN skal være 4 cifre', 'danger'); return; }
@@ -3391,7 +3404,8 @@ function wireEvents() {
           text: 'Indtast din 4-cifrede PIN.',
           confirmLabel: 'Log ind',
           danger: false,
-          input: true
+          input: true,
+          inputMode: 'numeric'
         });
         if (pin === null) {
           e.target.value = prevUser || '';
